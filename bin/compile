@@ -28,22 +28,12 @@ BUILDPACK_DIR=$(cd -P -- "$(dirname -- "$0")" && cd .. && pwd -P)
 # Get the directory our app is checked out in (the "BUILD_DIR"), passed by Heroku
 APP_CHECKOUT_DIR=$1
 # Where the Meteor app source code is located
-APP_SOURCE_DIR="$APP_CHECKOUT_DIR"
-# The Iron scaffolding tool (https://github.com/iron-meteor/iron-cli) place the
-# Meteor app in /app/ instead of in the root. So let's try the /app/ folder if
-# there is no Meteor app in the root.
-if [ ! -d "$APP_SOURCE_DIR/.meteor" ] && [ -d "$APP_SOURCE_DIR/app/.meteor" ]; then
-  APP_SOURCE_DIR="$APP_SOURCE_DIR/app/"
-fi
-# Also try the meteor folder in case of webpack
-if [ ! -d "$APP_SOURCE_DIR/.meteor" ] && [ -d "$APP_SOURCE_DIR/meteor/.meteor" ]; then
-  APP_SOURCE_DIR="$APP_SOURCE_DIR/meteor/"
-fi
+METEOR_SOURCE_DIR="$APP_CHECKOUT_DIR/meteor"
 # Where we will install meteor. Has to be outside the APP_CHECKOUT_DIR.
 METEOR_DIR=`mktemp -d "$BUILDPACK_DIR"/meteor-XXXX`
 # Where we'll put things we compile.
 COMPILE_DIR_SUFFIX=".meteor/heroku_build"
-COMPILE_DIR="$APP_CHECKOUT_DIR"/"$COMPILE_DIR_SUFFIX"
+COMPILE_DIR="$METEOR_SOURCE_DIR"/"$COMPILE_DIR_SUFFIX"
 
 # Create directories as needed.
 mkdir -p "$APP_CHECKOUT_DIR" "$METEOR_DIR" "$COMPILE_DIR"
@@ -74,23 +64,11 @@ METEOR="$METEOR_DIR/.meteor/meteor" # The meteor binary.
 # Build the meteor app!
 #
 echo "-----> Bundling bundle"
-cd $APP_SOURCE_DIR
+cd $METEOR_SOURCE_DIR
 
 # Now on to bundling. Don't put the bundle in $APP_CHECKOUT_DIR, or it will
 # recurse, trying to bundle up its own bundling.
 BUNDLE_DEST=`mktemp -d "$BUILDPACK_DIR/build-XXXX"`
-
-# <hack issue="https://github.com/meteor/meteor/issues/2796>
-# the root cause seems to be related to https://github.com/meteor/meteor/issues/2606
-# Also remember to use 'heroku stack:set cedar-14' to allow certain recompiled
-# packages to use the newer version memcpy that ships with a more recent version
-# of glibc (contained in cedar-14)
-if [ -n "${BUILDPACK_PRELAUNCH_METEOR+1}" ]; then
-echo "-----> Pre-launching Meteor to create packages assets and prevent bundling from failing"
-    HOME=$METEOR_DIR $METEOR remove-platform ios android
-    HOME=$METEOR_DIR timeout -s9 60 $METEOR --settings settings.json || true
-fi
-# </hack>
 
 echo "-----> Building Meteor with ROOT_URL: $ROOT_URL"
 HOME=$METEOR_DIR $METEOR build --server $ROOT_URL --directory $BUNDLE_DEST
@@ -98,9 +76,7 @@ mv $BUNDLE_DEST/bundle "$COMPILE_DIR/app"
 rmdir $BUNDLE_DEST
 
 # If we use npm, run npm install.
-if [ -e "$COMPILE_DIR"/app/programs/server/package.json ]; then
-  cd "$COMPILE_DIR"/app/programs/server && npm install
-fi
+cd "$APP_CHECKOUT_DIR" && npm install
 
 #
 # Environment
