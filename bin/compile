@@ -53,6 +53,9 @@ export npm_config_prefix="$COMPILE_DIR"
 export CPATH="$COMPILE_DIR"/include
 export CPPPATH="$CPATH"
 
+# Bundle webpack
+cd "$APP_CHECKOUT_DIR" && npm run build
+
 #
 # Install meteor
 #
