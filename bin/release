@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cat <<EOF
+addons:
+  - mongolab
+default_process_types:
+  web: npm run meteor
+EOF
