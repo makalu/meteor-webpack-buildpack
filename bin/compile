@@ -71,7 +71,7 @@ BUNDLE_DEST=`mktemp -d "$BUILDPACK_DIR/build-XXXX"`
 
 echo "-----> Building Meteor"
 HOME=$METEOR_DIR $METEOR build --directory $BUNDLE_DEST
-mv $BUNDLE_DEST "$COMPILE_DIR/app"
+mv "$BUNDLE_DEST/bundle" "$COMPILE_DIR/app"
 rmdir $BUNDLE_DEST
 
 # If we use npm, run npm install.
